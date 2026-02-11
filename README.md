@@ -49,6 +49,27 @@
     *   `player.tscn` / `player.gd`：玩家控制、边界限制。
     *   `ball.tscn` / `ball.gd`：球体物理、自动销毁。
 
+### 🏗️ 项目架构 (Monorepo)
+
+本项目采用 Monorepo 架构，将源码与发布产物分离：
+
+*   **`game/`**: 游戏核心源码（GDScript, 场景等）。
+*   **`apps/web/`**: Web 版本发布仓库（包含构建后的 HTML/JS/WASM）。
+*   **`build.sh`**: 自动化构建脚本，将 `game/` 的内容构建到 `apps/web/`。
+
+这种结构允许将 `apps/web` 作为一个独立的 Git 仓库推送到 Vercel 等平台进行部署，而无需上传庞大的工程源文件。
+
+### 🚀 部署流程 (Web)
+
+1.  **构建**: 运行 `./build.sh "Web"` 生成最新 Web 包。
+2.  **提交发布**:
+    ```bash
+    cd apps/web
+    git add .
+    git commit -m "Update build"
+    git push origin main  # 推送到您的部署仓库
+    ```
+
 ### 📦 自动打包脚本
 
 本项目提供了一个 Shell 脚本，用于一键导出所有平台的构建版本。

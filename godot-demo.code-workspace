@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"name": "Root (Tools)",
+			"path": "."
+		},
+		{
+			"name": "Game Source",
+			"path": "game"
+		},
+		{
+			"name": "Web Deployment",
+			"path": "apps/web"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/.git": false,
+			"**/.DS_Store": true,
+            "game/.godot": true
+		}
+	}
+}

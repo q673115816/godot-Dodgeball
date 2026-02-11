@@ -2,22 +2,15 @@
 .godot/
 *.translation
 
-# Build artifacts (ignore general builds)
+# Build artifacts
 builds/
+apps/web/
 *.pck
 *.exe
 *.app
 *.zip
 *.dmg
 *.wasm
-
-# Allow committing apps/web artifacts (for Vercel deployment)
-!apps/web/*.pck
-!apps/web/*.wasm
-!apps/web/*.js
-!apps/web/*.html
-!apps/web/*.png
-!apps/web/*.json
 
 # Import cache
 .import/
