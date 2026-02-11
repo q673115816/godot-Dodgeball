@@ -1,9 +1,8 @@
 # Godot-specific ignores
 .godot/
 *.translation
-export_presets.cfg
 
-# Build artifacts
+# Build artifacts (ignore general builds)
 builds/
 *.pck
 *.exe
@@ -11,6 +10,14 @@ builds/
 *.zip
 *.dmg
 *.wasm
+
+# Allow committing apps/web artifacts (for Vercel deployment)
+!apps/web/*.pck
+!apps/web/*.wasm
+!apps/web/*.js
+!apps/web/*.html
+!apps/web/*.png
+!apps/web/*.json
 
 # Import cache
 .import/
