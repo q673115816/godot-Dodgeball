@@ -335,7 +335,7 @@ func update_skill_ui():
 		var stack = SkillManager.get_skill_stack(skill_id)
 
 		var label = Label.new()
-		label.theme_override_font_sizes.font_size = 16
+		label.add_theme_font_size_override("font_size", 16)
 
 		# 根据技能类型设置颜色
 		var color = Color.WHITE

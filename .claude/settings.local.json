@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./build.sh Web)"
+      "Bash(./build.sh Web)",
+      "Bash(godot --path game --headless --export-release \"Windows Desktop\")",
+      "Bash(./build.sh Windows)"
     ]
   }
 }
