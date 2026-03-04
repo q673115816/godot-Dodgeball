@@ -4,6 +4,7 @@ extends Node2D
 var score: float = 0.0  # 改为浮点数以支持毫秒
 var game_running = false
 var game_over_state = false
+var game_paused = false
 
 # 难度控制变量
 var difficulty_level = 1
