@@ -11,18 +11,17 @@ GODOT_BIN="godot" # Assumes 'godot' is in your PATH. If not, set the full path h
 
 # Directories
 PROJECT_PATH="game"
-WEB_BUILD_DIR="apps/web"
-OTHER_BUILD_DIR="game/builds"
+BUILD_DIR="builds"
 
 # Platforms defined in export_presets.cfg
 PLATFORMS=("Web" "Windows Desktop" "macOS" "Linux/X11" "Android")
 
 # Create build directories
-mkdir -p "$WEB_BUILD_DIR"
-mkdir -p "$OTHER_BUILD_DIR/windows"
-mkdir -p "$OTHER_BUILD_DIR/macos"
-mkdir -p "$OTHER_BUILD_DIR/linux"
-mkdir -p "$OTHER_BUILD_DIR/android"
+mkdir -p "$BUILD_DIR/web"
+mkdir -p "$BUILD_DIR/windows"
+mkdir -p "$BUILD_DIR/macos"
+mkdir -p "$BUILD_DIR/linux"
+mkdir -p "$BUILD_DIR/android"
 
 echo "🚀 Starting build process..."
 
