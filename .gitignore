@@ -19,3 +19,5 @@
 .mono/
 data_*/
 .idea
+.claude
+.agents

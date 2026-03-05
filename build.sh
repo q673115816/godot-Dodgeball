@@ -13,13 +13,17 @@ GODOT_BIN="godot" # Assumes 'godot' is in your PATH. If not, set the full path h
 PROJECT_PATH="game"
 BUILD_DIR="builds"
 
-# Platform name mapping (user-friendly name -> export preset name)
-declare -A PLATFORM_MAP
-PLATFORM_MAP["Web"]="Web"
-PLATFORM_MAP["Windows"]="Windows Desktop"
-PLATFORM_MAP["macOS"]="macOS"
-PLATFORM_MAP["Linux"]="Linux/X11"
-PLATFORM_MAP["Android"]="Android"
+# Platform name mapping function (user-friendly name -> export preset name)
+get_preset_name() {
+    case "$1" in
+        "Web") echo "Web" ;;
+        "Windows") echo "Windows Desktop" ;;
+        "macOS") echo "macOS" ;;
+        "Linux") echo "Linux/X11" ;;
+        "Android") echo "Android" ;;
+        *) echo "$1" ;;  # default to the input
+    esac
+}
 
 # Platforms defined in export_presets.cfg
 PLATFORMS=("Web" "Windows Desktop" "macOS" "Linux/X11" "Android")
@@ -34,7 +38,7 @@ echo "🚀 Starting build process..."
 
 build_platform() {
     local platform=$1
-    local preset_name="${PLATFORM_MAP[$platform]}"
+    local preset_name=$(get_preset_name "$platform")
 
     # If no mapping found, use the platform name as-is
     if [ -z "$preset_name" ]; then

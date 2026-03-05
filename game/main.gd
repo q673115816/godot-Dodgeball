@@ -1,132 +1,305 @@
 extends Node2D
 
-@export var ball_scene: PackedScene  # 在编辑器中拖入 ball.tscn
-var score: float = 0.0  # 改为浮点数以支持毫秒
+@export var ball_scene: PackedScene
+@export var question_block_scene: PackedScene
+@export var pause_menu_scene: PackedScene
+var score: float = 0.0
 var game_running = false
 var game_over_state = false
 var game_paused = false
 
+# 问号块生成
+var question_block_timer = 0.0
+var question_block_interval_min = 10.0
+var question_block_interval_max = 30.0
+var current_question_block_interval = 15.0
+
 # 难度控制变量
 var difficulty_level = 1
-var max_difficulty = 10
+var max_difficulty = 8
 var time_since_last_difficulty_increase = 0.0
-var difficulty_interval = 5.0  # 每 5 秒增加一次难度
+var difficulty_interval = 8.0
 
 # 技能系统变量
-var base_spawn_interval = 0.5  # 基础生成间隔
-var skills_dodged_count = 0  # 躲避的球数量（用于吸血技能）
-var ghost_revive_used = false  # 幽灵复活是否已使用
-var bomb_timer = 0.0  # 炸弹计时器
-var revive_timer = 0.0  # 复活计时器（幽灵技能）
-var awaiting_revive = false  # 是否等待复活
+var base_spawn_interval = 0.5
+var skills_dodged_count = 0
+var ghost_revive_used = false
+var bomb_timer = 0.0
+var revive_timer = 0.0
+var awaiting_revive = false
+
+# 输入检测
+var player_uses_mouse = false
+var input_sample_timer = 0.0
+var keyboard_input_count = 0
+var mouse_input_count = 0
+var input_sample_complete = false
+
+# 清除横条功能
+var clearance_bar_timer = 0.0
+var clearance_bar_interval = 20.0
+var clearance_bar_warning_time = 3.0
+var clearance_bar_sweep_time = 1.5
+var clearance_bar_active = false
+var clearance_bar_warning = false
+var clearance_bar_direction = 0  # 0=水平从上到下，1=垂直从左到右
+var clearance_bar_position = 0.0  # 0.0 到 1.0
+var clearance_bar_thickness = 15.0  # 横条厚度（碰撞区域）
+var clearance_bar_length_ratio = 0.5  # 横条长度占屏幕比例（半屏）
+
+# 暂停菜单
+var pause_menu = null
 
 func _ready():
-	# 使用代码连接计时器信号
 	$BallTimer.timeout.connect(_on_ball_timer_timeout)
-
-	# 初始化分数
 	$HUD/ScoreLabel.text = "Time: 0.000 s"
 	$HUD/DifficultyLabel.text = "Level: 1"
-
-	# 设置玩家初始位置到屏幕中央
 	$Player.position = Vector2(400, 300)
-
-	# 显示开始提示
-	$HUD/MessageLabel.text = "Press Arrow Keys\nor Touch to Start"
+	$HUD/MessageLabel.text = SettingsManager.get_text("press_to_start")
 	$HUD/MessageLabel.show()
-
-	# 确保计时器初始是停止的
 	$BallTimer.stop()
 
-	# 初始化 SkillManager 回调
 	if has_node("/root/SkillManager"):
 		SkillManager.skill_acquired.connect(_on_skill_acquired)
 		SkillManager.skill_removed.connect(_on_skill_removed)
 		$Player.connect("ball_dodged", _on_ball_dodged)
 
+	# 初始化清除横条 UI（半透明红色）
+	if not $HUD.has_node("ClearanceBar"):
+		var bar = ColorRect.new()
+		bar.name = "ClearanceBar"
+		bar.color = Color(1, 0, 0, 0.5)
+		$HUD.add_child(bar)
+
+	# 加载暂停菜单
+	if pause_menu_scene:
+		pause_menu = pause_menu_scene.instantiate()
+		add_child(pause_menu)
+		pause_menu.resume_game.connect(_on_resume_game)
+		pause_menu.restart_game.connect(_on_restart_game)
+		pause_menu.open_settings.connect(_on_open_settings)
+		pause_menu.quit_game.connect(_on_quit_game)
+
+	# 连接设置管理器的语言变化信号
+	if has_node("/root/SettingsManager"):
+		SettingsManager.language_changed.connect(_on_language_changed)
+		_update_texts()
+
+func _input(event):
+	if event.is_action_pressed("ui_cancel") and game_running and not game_over_state:
+		toggle_pause()
+
 func _process(delta):
-	# 游戏暂停时不处理其他逻辑
-	if game_paused:
+	if game_paused or (pause_menu and pause_menu.is_paused):
 		return
 
-	# 游戏未开始且未结束时，检测输入以开始游戏
 	if not game_running and not game_over_state and not awaiting_revive:
-		# 键盘开始
 		if Input.is_action_pressed("ui_up") or Input.is_action_pressed("ui_down") or \
 		   Input.is_action_pressed("ui_left") or Input.is_action_pressed("ui_right"):
 			start_game()
-		# 触摸/鼠标点击开始
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			start_game()
 
-	# 游戏进行中，更新时间与难度
 	if game_running:
-		# 应用时间流逝修饰
 		var time_slow = SkillManager.get_time_slow_modifier()
 		var actual_delta = delta * (1.0 - time_slow)
-
 		score += actual_delta
 		$HUD/ScoreLabel.text = "Time: %.3f s" % score
 
-		# 难度提升逻辑
+		# 输入采样（前 5 秒检测玩家偏好）
+		if score < 5.0 and not input_sample_complete:
+			input_sample_timer += delta
+			if input_sample_timer >= 0.1:
+				input_sample_timer = 0.0
+				_sample_input()
+		elif score >= 5.0 and not input_sample_complete:
+			_determine_input_preference()
+
 		if difficulty_level < max_difficulty:
 			time_since_last_difficulty_increase += actual_delta
 			if time_since_last_difficulty_increase >= difficulty_interval:
 				increase_difficulty()
 				time_since_last_difficulty_increase = 0.0
 
-		# 炸弹技能计时器
 		if SkillManager.has_skill("bomb"):
 			bomb_timer += delta
 			if bomb_timer >= 10.0:
 				activate_bomb()
 				bomb_timer = 0.0
 
-		# 幽灵复活计时器
+		# 清除横条逻辑
+		if not clearance_bar_active and not clearance_bar_warning:
+			clearance_bar_timer += delta
+			if clearance_bar_timer >= clearance_bar_interval:
+				clearance_bar_warning = true
+				clearance_bar_direction = randi() % 2
+				_start_clearance_warning()
+		elif clearance_bar_active:
+			_update_clearance_bar(delta)
+
+		# 问号块生成计时器（清除横条期间不生成）
+		if not clearance_bar_active and not clearance_bar_warning:
+			question_block_timer += delta
+			if question_block_timer >= current_question_block_interval:
+				spawn_question_block()
+				question_block_timer = 0.0
+				current_question_block_interval = randf_range(question_block_interval_min, question_block_interval_max)
+
 		if awaiting_revive:
 			revive_timer += delta
 			if revive_timer >= 3.0:
-				# 超时未复活，正常死亡
 				awaiting_revive = false
 				game_over_state = true
-				$HUD/MessageLabel.text = "GAME OVER\nSurvived: %.3f s\nMax Level: %d\nPress R or Touch" % [score, difficulty_level]
+				$HUD/MessageLabel.text = SettingsManager.get_text("game_over") + "\n" + \
+					SettingsManager.get_text("survived_time") + ": %.3f s\n" + \
+					SettingsManager.get_text("max_level") + ": %d\nPress R or Touch" % [score, difficulty_level]
 				$HUD/MessageLabel.show()
 
-	# 游戏结束状态下，按 R 重启
 	if game_over_state:
 		if Input.is_key_pressed(KEY_R):
 			restart_game()
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			restart_game()
 
+func toggle_pause():
+	if pause_menu:
+		pause_menu.toggle_pause()
+		game_paused = pause_menu.is_paused
+
+func _on_resume_game():
+	game_paused = false
+
+func _on_restart_game():
+	restart_game()
+
+func _on_open_settings():
+	var settings_menu = load("res://settings_menu.tscn").instantiate()
+	add_child(settings_menu)
+	settings_menu.back_to_game.connect(func():
+		settings_menu.queue_free()
+	)
+
+func _on_quit_game():
+	get_tree().quit()
+
+func _on_language_changed():
+	_update_texts()
+
+func _update_texts():
+	if not has_node("/root/SettingsManager"):
+		return
+
+	if not game_running and not game_over_state:
+		$HUD/MessageLabel.text = SettingsManager.get_text("press_to_start")
+
+func _sample_input():
+	if Input.is_action_pressed("ui_up") or Input.is_action_pressed("ui_down") or \
+	   Input.is_action_pressed("ui_left") or Input.is_action_pressed("ui_right"):
+		keyboard_input_count += 1
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		mouse_input_count += 1
+
+func _determine_input_preference():
+	input_sample_complete = true
+	player_uses_mouse = mouse_input_count > keyboard_input_count
+	print("Input preference: mouse=", mouse_input_count, " keyboard=", keyboard_input_count, " uses_mouse=", player_uses_mouse)
+
 func start_game():
 	game_running = true
 	$HUD/MessageLabel.hide()
-
-	# 重置难度
 	difficulty_level = 1
 	time_since_last_difficulty_increase = 0.0
 	$HUD/DifficultyLabel.text = "Level: 1"
-
-	# 重置技能相关
 	skills_dodged_count = 0
 	ghost_revive_used = false
 	bomb_timer = 0.0
+	question_block_timer = 0.0
+	clearance_bar_timer = 0.0
+	clearance_bar_active = false
+	clearance_bar_warning = false
+	clearance_bar_position = 0.0
+	current_question_block_interval = randf_range(question_block_interval_min, question_block_interval_max)
 	SkillManager.clear_all_skills()
 
-	# 应用初始生成间隔
+	player_uses_mouse = false
+	keyboard_input_count = 0
+	mouse_input_count = 0
+	input_sample_complete = false
+
+	if $HUD.has_node("ClearanceBar"):
+		$HUD/ClearanceBar.hide()
+
+	if has_node("/root/AudioManager"):
+		AudioManager.play_start_game()
+
 	update_spawn_interval()
 	$BallTimer.start()
 
+func _start_clearance_warning():
+	$HUD/MessageLabel.text = SettingsManager.get_text("clearance_warning")
+	$HUD/MessageLabel.show()
+
+	await get_tree().create_timer(clearance_bar_warning_time).timeout
+	if game_running:
+		clearance_bar_warning = false
+		clearance_bar_active = true
+		clearance_bar_timer = 0.0
+		clearance_bar_position = 0.0
+		$HUD/MessageLabel.hide()
+
+func _update_clearance_bar(delta):
+	var screen_size = get_viewport_rect().size
+	var bar = $HUD/ClearanceBar
+
+	clearance_bar_position += delta / clearance_bar_sweep_time
+
+	if clearance_bar_position >= 1.0:
+		clearance_bar_active = false
+		clearance_bar_position = 0.0
+		bar.hide()
+		_show_clearance_complete()
+		return
+
+	var sweep_distance = clearance_bar_position * screen_size.y if clearance_bar_direction == 0 else clearance_bar_position * screen_size.x
+
+	if clearance_bar_direction == 0:
+		bar.position = Vector2((screen_size.x - screen_size.x * clearance_bar_length_ratio) / 2, sweep_distance)
+		bar.size = Vector2(screen_size.x * clearance_bar_length_ratio, clearance_bar_thickness)
+	else:
+		bar.position = Vector2(sweep_distance, (screen_size.y - screen_size.y * clearance_bar_length_ratio) / 2)
+		bar.size = Vector2(clearance_bar_thickness, screen_size.y * clearance_bar_length_ratio)
+
+	bar.show()
+	_push_balls_in_bar(sweep_distance)
+
+func _push_balls_in_bar(sweep_distance: float):
+	var half_thickness = clearance_bar_thickness / 2.0
+	var push_force = 800.0
+	var balls = get_tree().get_nodes_in_group("balls")
+
+	for ball in balls:
+		var should_push = false
+		if clearance_bar_direction == 0:
+			if ball.position.y >= sweep_distance - half_thickness and ball.position.y <= sweep_distance + half_thickness:
+				should_push = true
+		else:
+			if ball.position.x >= sweep_distance - half_thickness and ball.position.x <= sweep_distance + half_thickness:
+				should_push = true
+
+		if should_push:
+			var push_direction = Vector2(0, 1) if clearance_bar_direction == 0 else Vector2(1, 0)
+			ball.apply_central_impulse(push_direction * push_force)
+
+func _show_clearance_complete():
+	$HUD/MessageLabel.text = SettingsManager.get_text("cleared")
+	$HUD/MessageLabel.show()
+	await get_tree().create_timer(1.0).timeout
+	if game_running:
+		$HUD/MessageLabel.hide()
+
 func update_spawn_interval():
-	"""根据难度和技能更新生成间隔"""
-	# 基础间隔随难度变化
 	var difficulty_factor = max(0.05, 0.5 - (difficulty_level - 1) * 0.05)
-
-	# 应用技能修饰
 	var spawn_modifier = SkillManager.get_spawn_interval_modifier()
-
-	# 计算最终间隔
 	var final_interval = difficulty_factor * (1.0 + spawn_modifier)
 	$BallTimer.wait_time = max(0.02, final_interval)
 
@@ -134,22 +307,26 @@ func increase_difficulty():
 	difficulty_level += 1
 	$HUD/DifficultyLabel.text = "Level: " + str(difficulty_level)
 
-	# === Roguelike 技能获取 ===
-	var new_skill = SkillManager.generate_random_skill(difficulty_level)
+	var excluded_skills = []
+	if player_uses_mouse:
+		excluded_skills.append("reverse_controls")
+
+	var new_skill = SkillManager.generate_random_skill_with_exclusions(difficulty_level, excluded_skills)
 	if new_skill != "":
 		SkillManager.acquire_skill(new_skill)
 		show_skill_notification(new_skill)
 
-		# 检查是否有生命恢复技能
-		if SkillManager.has_skill("regen"):
-			var current_shields = SkillManager.get_shield_count()
-			$Player.set_shield(current_shields)
+		if has_node("/root/AudioManager"):
+			AudioManager.play_level_up()
 
-	# 更新生成间隔
+		if SkillManager.has_skill("regen"):
+			if SkillManager.has_skill("shield"):
+				SkillManager.active_skills["shield"] = SkillManager.get_skill_stack("shield") + 1
+			$Player.set_shield(SkillManager.get_shield_count())
+
 	update_spawn_interval()
 
 func show_skill_notification(skill_id: String):
-	"""显示技能获取通知"""
 	var info = SkillManager.get_skill_info(skill_id)
 	var type_indicator = ""
 	match info.type:
@@ -160,51 +337,47 @@ func show_skill_notification(skill_id: String):
 		"special":
 			type_indicator = "⚡ "
 
-	$HUD/MessageLabel.text = "LEVEL UP!\n%s%s\n%s" % [type_indicator, info.name, info.description]
+	$HUD/MessageLabel.text = SettingsManager.get_text("level_up") + "\n" + type_indicator + info.name + "\n" + info.description
 	$HUD/MessageLabel.show()
 
-	# 1.5 秒后隐藏通知
 	await get_tree().create_timer(1.5).timeout
 	if game_running:
 		$HUD/MessageLabel.hide()
 
 func activate_bomb():
-	"""激活炸弹技能，清除屏幕上所有球"""
-	# 获取所有球节点
 	var balls = get_tree().get_nodes_in_group("balls")
 	for ball in balls:
 		ball.queue_free()
 
-	# 显示特效
-	$HUD/MessageLabel.text = "BOMB!\nAll balls cleared!"
+	if has_node("/root/AudioManager"):
+		AudioManager.play_bomb()
+
+	$HUD/MessageLabel.text = SettingsManager.get_text("bomb")
 	$HUD/MessageLabel.show()
 	await get_tree().create_timer(1.0).timeout
 	if game_running:
 		$HUD/MessageLabel.hide()
 
 func _on_ball_timer_timeout():
-	if not game_running: return
+	if not game_running:
+		return
+	if clearance_bar_active:
+		return
 
-	# 实例化球
 	spawn_ball()
 
-	# 高难度下，偶尔一次生成多个球 (例如 Level 5 以上，每次有概率额外生成一个)
 	if difficulty_level >= 5 and randf() > 0.5:
 		spawn_ball()
 
-	# Level 8 以上，必定额外生成，甚至可能三个
 	if difficulty_level >= 8:
 		spawn_ball()
 
-	# 技能：多重生成
 	var extra_spawn = SkillManager.get_extra_spawn_count()
 	for i in range(extra_spawn):
 		spawn_ball()
 
 func spawn_ball():
 	var ball = ball_scene.instantiate()
-
-	# 决定生成球的边 (0:上，1:下，2:左，3:右)
 	var side = randi() % 4
 	var spawn_pos = Vector2.ZERO
 	var screen_size = get_viewport_rect().size
@@ -218,21 +391,16 @@ func spawn_ball():
 
 	ball.position = spawn_pos
 
-	# 计算朝向
 	var player_pos = $Player.position
 	var direction = (player_pos - spawn_pos).normalized()
 
-	# 难度也会轻微影响球速
-	var speed_multiplier = 1.0 + (difficulty_level * 0.05)  # 每级增加 5% 速度
-
-	# 应用技能修饰
+	var speed_multiplier = 1.0 + (difficulty_level * 0.03)
 	var ball_speed_mod = SkillManager.get_ball_speed_modifier()
 	speed_multiplier *= (1.0 + ball_speed_mod)
 
 	var speed = randf_range(200, 400) * speed_multiplier
 	ball.linear_velocity = direction * speed
 
-	# 应用龙卷风轨迹
 	if SkillManager.has_tornado_trajectory():
 		ball.angular_velocity = randf_range(200, 400) * (1 if randf() > 0.5 else -1)
 
@@ -240,22 +408,18 @@ func spawn_ball():
 	ball.max_contacts_reported = 1
 	ball.body_entered.connect(_on_ball_body_entered)
 	ball.add_to_group("balls")
-
-	# 设置玩家引用（用于技能效果）
 	ball.player_reference = $Player
 
 	add_child(ball)
 
 func _on_ball_dodged():
-	"""当球被成功躲避时调用"""
 	skills_dodged_count += 1
 
-	# 吸血技能：每躲避 50 个球，Level -1
 	if SkillManager.has_skill("vampire") and skills_dodged_count % 50 == 0:
 		difficulty_level = max(1, difficulty_level - 1)
 		$HUD/DifficultyLabel.text = "Level: " + str(difficulty_level)
 
-		$HUD/MessageLabel.text = "VAMPIRE!\nLevel decreased!"
+		$HUD/MessageLabel.text = SettingsManager.get_text("vampire")
 		$HUD/MessageLabel.show()
 		await get_tree().create_timer(1.0).timeout
 		if game_running:
@@ -263,41 +427,37 @@ func _on_ball_dodged():
 
 func _on_ball_body_entered(body):
 	if body.name == "Player":
-		# 检查护盾
 		var shield_count = SkillManager.get_shield_count()
 		if shield_count > 0 and not awaiting_revive:
-			# 消耗一层护盾
 			SkillManager.active_skills["shield"] = shield_count - 1
 			if SkillManager.active_skills["shield"] <= 0:
 				SkillManager.active_skills.erase("shield")
 
-			# 显示护盾破碎提示
-			$HUD/MessageLabel.text = "SHIELD BROKE!"
+			if has_node("/root/AudioManager"):
+				AudioManager.play_shield_break()
+
+			$HUD/MessageLabel.text = SettingsManager.get_text("shield_broke")
 			$HUD/MessageLabel.show()
 			await get_tree().create_timer(1.0).timeout
 			if game_running:
 				$HUD/MessageLabel.hide()
 
-			# 更新玩家护盾显示
 			$Player.set_shield(SkillManager.active_skills.get("shield", 0))
 			return
 
-		# 检查幽灵技能
 		if SkillManager.has_skill("ghost") and not ghost_revive_used and not awaiting_revive:
 			ghost_revive_used = true
 			awaiting_revive = true
 			revive_timer = 0.0
 
-			$HUD/MessageLabel.text = "GHOST!\nYou have 3 seconds to revive!"
+			$HUD/MessageLabel.text = SettingsManager.get_text("ghost")
 			$HUD/MessageLabel.show()
 
-			# 清除屏幕上所有球，给玩家机会
 			var balls = get_tree().get_nodes_in_group("balls")
 			for ball in balls:
 				ball.queue_free()
 			return
 
-		# 如果正在等待复活且碰到球，视为成功复活
 		if awaiting_revive:
 			awaiting_revive = false
 			$HUD/MessageLabel.hide()
@@ -309,27 +469,58 @@ func game_over():
 	game_running = false
 	game_over_state = true
 	$BallTimer.stop()
-	$HUD/MessageLabel.text = "GAME OVER\nSurvived: %.3f s\nMax Level: %d\nPress R or Touch" % [score, difficulty_level]
+
+	if has_node("/root/AudioManager"):
+		AudioManager.play_game_over()
+
+	$HUD/MessageLabel.text = SettingsManager.get_text("game_over") + "\n" + \
+		SettingsManager.get_text("survived_time") + ": %.3f s\n" + \
+		SettingsManager.get_text("max_level") + ": %d\nPress R or Touch" % [score, difficulty_level]
 	$HUD/MessageLabel.show()
 
 func restart_game():
 	get_tree().reload_current_scene()
 
+func spawn_question_block():
+	if question_block_scene == null:
+		push_warning("Question block scene not assigned!")
+		return
+
+	var existing_blocks = get_tree().get_nodes_in_group("question_blocks")
+	if existing_blocks.size() > 0:
+		return
+
+	var block = question_block_scene.instantiate()
+
+	var screen_size = get_viewport_rect().size
+	var buffer = 100
+	var random_pos = Vector2(
+		randf_range(buffer, screen_size.x - buffer),
+		randf_range(buffer, screen_size.y - buffer)
+	)
+
+	block.position = random_pos
+	add_child(block)
+
+	if has_node("/root/AudioManager"):
+		AudioManager.play_question_block()
+
+	$HUD/MessageLabel.text = SettingsManager.get_text("question_block")
+	$HUD/MessageLabel.show()
+	await get_tree().create_timer(1.0).timeout
+	if game_running:
+		$HUD/MessageLabel.hide()
+
 func _on_skill_acquired(skill_id: String):
-	"""当获得技能时更新 UI"""
 	update_skill_ui()
 
 func _on_skill_removed(skill_id: String):
-	"""当失去技能时更新 UI"""
 	update_skill_ui()
 
 func update_skill_ui():
-	"""更新技能 UI 显示"""
-	# 清除现有技能图标
 	for child in $HUD/SkillContainer.get_children():
 		child.queue_free()
 
-	# 添加新技能图标
 	for skill_id in SkillManager.get_all_active_skills():
 		var info = SkillManager.get_skill_info(skill_id)
 		var stack = SkillManager.get_skill_stack(skill_id)
@@ -337,17 +528,15 @@ func update_skill_ui():
 		var label = Label.new()
 		label.add_theme_font_size_override("font_size", 16)
 
-		# 根据技能类型设置颜色
 		var color = Color.WHITE
 		match info.type:
 			"positive":
-				color = Color(0.2, 1.0, 0.2)  # 绿色
+				color = Color(0.2, 1.0, 0.2)
 			"negative":
-				color = Color(1.0, 0.2, 0.2)  # 红色
+				color = Color(1.0, 0.2, 0.2)
 			"special":
-				color = Color(0.8, 0.2, 1.0)  # 紫色
+				color = Color(0.8, 0.2, 1.0)
 
-		# 显示技能图标和层数
 		var icon = ""
 		match info.type:
 			"positive":

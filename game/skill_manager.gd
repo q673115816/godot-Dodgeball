@@ -243,6 +243,10 @@ func get_all_active_skills() -> Array:
 
 func generate_random_skill(difficulty_level: int = 1) -> String:
     """根据权重随机生成一个技能"""
+    return generate_random_skill_with_exclusions(difficulty_level, [])
+
+func generate_random_skill_with_exclusions(difficulty_level: int = 1, excluded_skills: Array = []) -> String:
+    """根据权重随机生成一个技能，排除指定的技能"""
     var weights = _get_dynamic_weights(difficulty_level)
 
     # 应用幸运加成
@@ -258,13 +262,16 @@ func generate_random_skill(difficulty_level: int = 1) -> String:
         if skill_data[skill_id].type == skill_type:
             # 排除已达到最大叠加的技能
             if get_skill_stack(skill_id) < skill_data[skill_id].max_stack:
-                type_skills.append(skill_id)
+                # 排除指定的技能
+                if not skill_id in excluded_skills:
+                    type_skills.append(skill_id)
 
     if type_skills.size() == 0:
         # 如果该类型没有可用技能，从所有技能中选
         for skill_id in skill_data:
             if get_skill_stack(skill_id) < skill_data[skill_id].max_stack:
-                type_skills.append(skill_id)
+                if not skill_id in excluded_skills:
+                    type_skills.append(skill_id)
 
     if type_skills.size() == 0:
         return ""  # 所有技能都满级了
@@ -373,8 +380,7 @@ func get_shield_count() -> int:
     var count = 0
     if has_skill("shield"):
         count += get_skill_stack("shield")
-    if has_skill("regen"):
-        count += 1  # 每级恢复在 main 中处理
+    # regen 不提供常驻护盾，只在升级时恢复（在 main.gd 中处理）
     return count
 
 func has_blind_mode() -> bool:

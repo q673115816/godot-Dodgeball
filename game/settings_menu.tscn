@@ -1,0 +1,104 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://settings_menu.gd" id="1_script"]
+
+[node name="SettingsMenu" type="CanvasLayer"]
+layer = 11
+script = ExtResource("1_script")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 800.0
+offset_bottom = 600.0
+color = Color(0, 0, 0, 0.7)
+
+[node name="SettingsPanel" type="Panel" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = -200.0
+offset_top = -180.0
+offset_right = 200.0
+offset_bottom = 180.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SettingsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 25
+offset_left = 50.0
+offset_top = 40.0
+offset_right = 350.0
+offset_bottom = 280.0
+
+[node name="TitleLabel" type="Label" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 3
+theme_override_font_sizes/font_size = 28
+text = "SETTINGS"
+horizontal_alignment = 1
+
+[node name="LanguageHBox" type="HBoxContainer" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 3
+offset_left = 0.0
+offset_top = 50.0
+offset_right = 300.0
+offset_bottom = 80.0
+
+[node name="Label" type="Label" parent="SettingsPanel/VBoxContainer/LanguageHBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 3
+size_flags_horizontal = 3
+text = "Language"
+
+[node name="LanguageButton" type="OptionButton" parent="SettingsPanel/VBoxContainer/LanguageHBox"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 3
+size_flags_horizontal = 3
+
+[node name="MusicHBox" type="HBoxContainer" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 3
+offset_left = 0.0
+offset_top = 100.0
+offset_right = 300.0
+offset_bottom = 130.0
+
+[node name="Label" type="Label" parent="SettingsPanel/VBoxContainer/MusicHBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 3
+size_flags_horizontal = 3
+text = "Music Volume"
+
+[node name="MusicSlider" type="HSlider" parent="SettingsPanel/VBoxContainer/MusicHBox"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 3
+size_flags_horizontal = 3
+max_value = 100.0
+value = 50.0
+
+[node name="SFXHBox" type="HBoxContainer" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 3
+offset_left = 0.0
+offset_top = 150.0
+offset_right = 300.0
+offset_bottom = 180.0
+
+[node name="Label" type="Label" parent="SettingsPanel/VBoxContainer/SFXHBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 3
+size_flags_horizontal = 3
+text = "SFX Volume"
+
+[node name="SFXSlider" type="HSlider" parent="SettingsPanel/VBoxContainer/SFXHBox"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 3
+size_flags_horizontal = 3
+max_value = 100.0
+value = 50.0
+
+[node name="BackButton" type="Button" parent="SettingsPanel/VBoxContainer"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 3
+text = "BACK"

@@ -3,7 +3,14 @@
     "allow": [
       "Bash(./build.sh Web)",
       "Bash(godot --path game --headless --export-release \"Windows Desktop\")",
-      "Bash(./build.sh Windows)"
+      "Bash(./build.sh Windows)",
+      "Bash(/tmp/main_patch.sed:*)",
+      "Bash(sed -i -f /tmp/main_patch.sed /Users/hzh/Documents/demo/godot-demo/game/main.gd)",
+      "Bash(/Users/hzh/Documents/demo/godot-demo/game/main.gd:*)",
+      "Bash(/Users/hzh/Documents/demo/godot-demo/game/main.tscn:*)",
+      "Bash(Godot --version)",
+      "Bash(sed -i '' 's/func _on_open_settings\\(\\):/func _on_open_settings_new\\(\\):/' /Users/hzh/Documents/demo/godot-demo/game/main.gd)",
+      "Bash(sed -i '' '/func _on_open_settings_new\\(\\):/a\\\\t# 打开设置菜单\\\\tvar settings_menu = load\\(\"\"res://settings_menu.tscn\"\"\\).instantiate\\(\\)\\\\tadd_child\\(settings_menu\\)\\\\tsettings_menu.back_to_game.connect\\(func\\(\\):\\\\t\\\\tsettings_menu.queue_free\\(\\)\\\\t\\)' /Users/hzh/Documents/demo/godot-demo/game/main.gd)"
     ]
   }
 }
