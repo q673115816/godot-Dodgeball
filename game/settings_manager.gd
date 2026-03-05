@@ -20,6 +20,7 @@ var translations = {
         "restart": "重新开始",
         "settings": "设置",
         "quit": "退出",
+        "start": "开始游戏",
         "settings_title": "设置",
         "language": "语言",
         "music_volume": "音乐音量",
@@ -37,6 +38,7 @@ var translations = {
         "cleared": "已清除!",
         "question_block": "❓ 问号块出现!\n找到它!",
         "clearance_warning": "⚠️ 清除横条!\n准备好!",
+        "main_menu_title": "躲避球",
     },
     "en_US": {
         "paused": "PAUSED",
@@ -44,6 +46,7 @@ var translations = {
         "restart": "RESTART",
         "settings": "SETTINGS",
         "quit": "QUIT",
+        "start": "START GAME",
         "settings_title": "SETTINGS",
         "language": "Language",
         "music_volume": "Music Volume",
@@ -61,6 +64,7 @@ var translations = {
         "cleared": "CLEARED!",
         "question_block": "❓ QUESTION BLOCK!\nFind it!",
         "clearance_warning": "⚠️ CLEARANCE BAR!\nGet ready!",
+        "main_menu_title": "DODGEBALL",
     }
 }
 

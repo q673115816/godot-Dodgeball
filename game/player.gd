@@ -27,10 +27,12 @@ func _ready():
 		SkillManager.skill_acquired.connect(_on_skill_acquired)
 		SkillManager.skill_removed.connect(_on_skill_removed)
 
-	# 连接 Area2D 信号
+	# 连接 Area2D 信号 - 用于检测球
 	if has_node("DetectionArea"):
 		$DetectionArea.body_entered.connect(_on_detection_area_body_entered)
 		$DetectionArea.body_exited.connect(_on_detection_area_body_exited)
+		# 添加 area_entered 用于检测问号块等 Area2D 对象
+		$DetectionArea.area_entered.connect(_on_detection_area_area_entered)
 
 func _physics_process(delta):
 	var velocity = Vector2.ZERO  # 玩家的移动向量
@@ -142,3 +144,9 @@ func _on_detection_area_body_exited(body):
 	if tracked_balls.has(body):
 		tracked_balls.erase(body)
 		ball_dodged.emit()
+
+func _on_detection_area_area_entered(area):
+	"""当其他 Area2D 进入检测区域时（如问号块）"""
+	# 这个方法用于检测问号块等 Area2D 对象
+	# 问号块会自己处理 area_entered 信号
+	pass

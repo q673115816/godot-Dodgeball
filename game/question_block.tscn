@@ -8,7 +8,10 @@ size = Vector2(24, 24)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_2"]
 size = Vector2(50, 50)
 
-[node name="QuestionBlock" type="Area2D"]
+[node name="QuestionBlock" type="Area2D" groups=["question_blocks"]]
+collision_layer = 2
+collision_mask = 1
+monitorable = true
 script = ExtResource("1_script")
 
 [node name="ColorRect" type="ColorRect" parent="."]
@@ -31,8 +34,3 @@ add_theme_font_size_override/Value = 24
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_1")
-
-[node name="DetectionArea" type="Area2D" parent="."]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea"]
-shape = SubResource("RectangleShape2D_2")

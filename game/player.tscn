@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=5 format=3 uid="uid://player_tscn"]
 
 [ext_resource type="Script" path="res://player.gd" id="1_script"]
 
@@ -9,6 +9,8 @@ size = Vector2(32, 32)
 size = Vector2(80, 80)
 
 [node name="Player" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 2
 script = ExtResource("1_script")
 
 [node name="ColorRect" type="ColorRect" parent="."]
@@ -22,6 +24,8 @@ color = Color(0.2, 0.6, 1, 1)
 shape = SubResource("RectangleShape2D_1")
 
 [node name="DetectionArea" type="Area2D" parent="."]
+collision_layer = 1
+collision_mask = 3
 
 [node name="DetectionShape" type="CollisionShape2D" parent="DetectionArea"]
 shape = SubResource("RectangleShape2D_2")
@@ -33,6 +37,3 @@ offset_right = 50.0
 offset_bottom = -20.0
 text = ""
 horizontal_alignment = 1
-
-[connection signal="body_entered" from="DetectionArea" to="." method="_on_area_entered"]
-[connection signal="body_exited" from="DetectionArea" to="." method="_on_area_exit"]

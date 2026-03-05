@@ -13,8 +13,12 @@ var collected: bool = false
 signal block_collected()
 
 func _ready():
-	# 连接身体进入信号
-	body_entered.connect(_on_body_entered)
+	# 启用监控
+	monitoring = true
+	monitorable = true
+
+	# 连接区域进入信号
+	area_entered.connect(_on_area_entered)
 
 	# 记录初始位置
 	base_position = position
@@ -48,11 +52,20 @@ func _process(delta):
 	if time_elapsed > 30.0:
 		queue_free()
 
-func _on_body_entered(body):
+func _on_area_entered(area):
 	if collected:
 		return
 
-	if body.name == "Player":
+	# 检查是否是玩家的 DetectionArea 或者属于玩家的 Area2D
+	var is_player = false
+	if area.name == "DetectionArea" and area.get_parent() and area.get_parent().name == "Player":
+		is_player = true
+	elif area.is_in_group("player"):
+		is_player = true
+	elif area.owner and area.owner.name == "Player":
+		is_player = true
+
+	if is_player:
 		collected = true
 
 		# 获取随机技能
