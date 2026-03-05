@@ -1,20 +1,22 @@
-[gd_scene format=3 uid="uid://main123"]
+[gd_scene load_steps=7 format=3 uid="uid://dm9qxk7p8m2ab"]
 
-[ext_resource type="Script" uid="uid://coukjk8wosr56" path="res://main.gd" id="1_script"]
+[ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://player.tscn" id="2_player"]
-[ext_resource type="PackedScene" uid="uid://ball123" path="res://ball.tscn" id="3_ball"]
-[ext_resource type="PackedScene" path="res://game/question_block.tscn" id="4_question_block"]
+[ext_resource type="PackedScene" path="res://ball.tscn" id="3_ball"]
+[ext_resource type="PackedScene" path="res://question_block.tscn" id="4_question_block"]
 [ext_resource type="PackedScene" path="res://pause_menu.tscn" id="5_pause_menu"]
 [ext_resource type="PackedScene" path="res://settings_menu.tscn" id="6_settings_menu"]
 
 [node name="Main" type="Node2D"]
-script = ExtResource("1_script")
+script = ExtResource("1_main")
 ball_scene = ExtResource("3_ball")
 question_block_scene = ExtResource("4_question_block")
 pause_menu_scene = ExtResource("5_pause_menu")
 
-[node name="Player" parent="." instance=ExtResource("2_player")]
-position = Vector2(400, 500)
+[node name="GameContent" type="Node2D" parent="."]
+
+[node name="Player" parent="GameContent" instance=ExtResource("2_player")]
+position = Vector2(400, 300)
 
 [node name="BallTimer" type="Timer" parent="."]
 wait_time = 0.5
@@ -68,4 +70,4 @@ horizontal_alignment = 1
 visible = false
 color = Color(1, 0, 0, 0.7)
 
-[node name="SettingsMenu" instance=ExtResource("6_settings_menu")]
+[node name="SettingsMenu" parent="." instance=ExtResource("6_settings_menu")]

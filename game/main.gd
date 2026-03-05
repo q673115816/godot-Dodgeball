@@ -47,22 +47,43 @@ var clearance_bar_position = 0.0  # 0.0 到 1.0
 var clearance_bar_thickness = 15.0  # 横条厚度（碰撞区域）
 var clearance_bar_length_ratio = 0.5  # 横条长度占屏幕比例（半屏）
 
+# 主菜单背景渐变
+var menu_bg_timer = 0.0
+var menu_bg_colors = [Color(0.1, 0.1, 0.3), Color(0.2, 0.1, 0.2), Color(0.1, 0.2, 0.2)]
+var current_bg_color_index = 0
+
 # 暂停菜单
 var pause_menu = null
 
+# 游戏内容容器
+var game_content = null
+
 func _ready():
+	# 创建游戏内容容器节点
+	game_content = Node2D.new()
+	game_content.name = "GameContent"
+	add_child(game_content)
+
+	# 将 Player 移动到游戏内容容器
+	if has_node("Player"):
+		$Player.reparent(game_content)
+
 	$BallTimer.timeout.connect(_on_ball_timer_timeout)
 	$HUD/ScoreLabel.text = "Time: 0.000 s"
 	$HUD/DifficultyLabel.text = "Level: 1"
-	$Player.position = Vector2(400, 300)
-	$HUD/MessageLabel.text = SettingsManager.get_text("press_to_start")
-	$HUD/MessageLabel.show()
+	if game_content.has_node("Player"):
+		game_content.get_node("Player").position = Vector2(400, 300)
+	$HUD/MessageLabel.hide()
 	$BallTimer.stop()
+
+	# 初始隐藏游戏内容
+	_hide_game_content()
 
 	if has_node("/root/SkillManager"):
 		SkillManager.skill_acquired.connect(_on_skill_acquired)
 		SkillManager.skill_removed.connect(_on_skill_removed)
-		$Player.connect("ball_dodged", _on_ball_dodged)
+		if game_content.has_node("Player"):
+			game_content.get_node("Player").connect("ball_dodged", _on_ball_dodged)
 
 	# 初始化清除横条 UI（半透明红色）
 	if not $HUD.has_node("ClearanceBar"):
@@ -71,7 +92,7 @@ func _ready():
 		bar.color = Color(1, 0, 0, 0.5)
 		$HUD.add_child(bar)
 
-	# 加载暂停菜单
+	# 加载暂停菜单（也用作主菜单和游戏结束菜单）
 	if pause_menu_scene:
 		pause_menu = pause_menu_scene.instantiate()
 		add_child(pause_menu)
@@ -79,26 +100,34 @@ func _ready():
 		pause_menu.restart_game.connect(_on_restart_game)
 		pause_menu.open_settings.connect(_on_open_settings)
 		pause_menu.quit_game.connect(_on_quit_game)
+		pause_menu.start_game.connect(_on_start_game_from_menu)
 
 	# 连接设置管理器的语言变化信号
 	if has_node("/root/SettingsManager"):
 		SettingsManager.language_changed.connect(_on_language_changed)
 		_update_texts()
 
-func _input(event):
-	if event.is_action_pressed("ui_cancel") and game_running and not game_over_state:
-		toggle_pause()
+func _hide_game_content():
+	"""隐藏游戏内容（玩家、球等）"""
+	if game_content:
+		game_content.visible = false
+
+func _show_game_content():
+	"""显示游戏内容"""
+	if game_content:
+		game_content.visible = true
 
 func _process(delta):
+	# 主菜单背景渐变动画
+	if not game_running:
+		_update_menu_background(delta)
+
 	if game_paused or (pause_menu and pause_menu.is_paused):
 		return
 
 	if not game_running and not game_over_state and not awaiting_revive:
-		if Input.is_action_pressed("ui_up") or Input.is_action_pressed("ui_down") or \
-		   Input.is_action_pressed("ui_left") or Input.is_action_pressed("ui_right"):
-			start_game()
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			start_game()
+		# 主菜单模式下，不处理键盘/鼠标输入开始游戏
+		return
 
 	if game_running:
 		var time_slow = SkillManager.get_time_slow_modifier()
@@ -150,16 +179,18 @@ func _process(delta):
 			if revive_timer >= 3.0:
 				awaiting_revive = false
 				game_over_state = true
-				$HUD/MessageLabel.text = SettingsManager.get_text("game_over") + "\n" + \
-					SettingsManager.get_text("survived_time") + ": %.3f s\n" + \
-					SettingsManager.get_text("max_level") + ": %d\nPress R or Touch" % [score, difficulty_level]
-				$HUD/MessageLabel.show()
+				pause_menu.show_game_over_menu()
 
 	if game_over_state:
-		if Input.is_key_pressed(KEY_R):
-			restart_game()
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			restart_game()
+		# 游戏结束后由菜单处理重启
+		pass
+
+func _update_menu_background(delta):
+	"""更新主菜单背景渐变"""
+	menu_bg_timer += delta
+	if menu_bg_timer >= 2.0:  # 每 2 秒切换一次颜色
+		menu_bg_timer = 0.0
+		current_bg_color_index = (current_bg_color_index + 1) % menu_bg_colors.size()
 
 func toggle_pause():
 	if pause_menu:
@@ -172,11 +203,24 @@ func _on_resume_game():
 func _on_restart_game():
 	restart_game()
 
+func _on_start_game_from_menu():
+	start_game()
+
 func _on_open_settings():
 	var settings_menu = load("res://settings_menu.tscn").instantiate()
 	add_child(settings_menu)
+	settings_menu.show_settings()
 	settings_menu.back_to_game.connect(func():
 		settings_menu.queue_free()
+		# 如果是从主菜单打开设置，返回后仍然显示主菜单
+		if not game_running and not game_over_state:
+			pause_menu.show_main_menu()
+		# 如果是从游戏结束菜单打开设置，返回后显示游戏结束菜单
+		elif game_over_state:
+			pause_menu.show_game_over_menu()
+		# 如果是从暂停菜单打开设置，返回后继续显示暂停菜单
+		elif game_paused:
+			pause_menu.show_pause_menu()
 	)
 
 func _on_quit_game():
@@ -190,7 +234,7 @@ func _update_texts():
 		return
 
 	if not game_running and not game_over_state:
-		$HUD/MessageLabel.text = SettingsManager.get_text("press_to_start")
+		$HUD/MessageLabel.hide()
 
 func _sample_input():
 	if Input.is_action_pressed("ui_up") or Input.is_action_pressed("ui_down") or \
@@ -228,6 +272,15 @@ func start_game():
 
 	if $HUD.has_node("ClearanceBar"):
 		$HUD/ClearanceBar.hide()
+
+	# 显示游戏内容
+	_show_game_content()
+
+	# 重置玩家
+	if game_content.has_node("Player"):
+		game_content.get_node("Player").position = Vector2(400, 300)
+		game_content.get_node("Player").scale = Vector2.ONE
+		game_content.get_node("Player").set_shield(0)
 
 	if has_node("/root/AudioManager"):
 		AudioManager.play_start_game()
@@ -274,21 +327,26 @@ func _update_clearance_bar(delta):
 
 func _push_balls_in_bar(sweep_distance: float):
 	var half_thickness = clearance_bar_thickness / 2.0
-	var push_force = 800.0
+	var push_force = 1500.0  # 增加推力
 	var balls = get_tree().get_nodes_in_group("balls")
 
 	for ball in balls:
 		var should_push = false
 		if clearance_bar_direction == 0:
+			# 水平方向，检查 Y 坐标
 			if ball.position.y >= sweep_distance - half_thickness and ball.position.y <= sweep_distance + half_thickness:
 				should_push = true
 		else:
+			# 垂直方向，检查 X 坐标
 			if ball.position.x >= sweep_distance - half_thickness and ball.position.x <= sweep_distance + half_thickness:
 				should_push = true
 
 		if should_push:
 			var push_direction = Vector2(0, 1) if clearance_bar_direction == 0 else Vector2(1, 0)
-			ball.apply_central_impulse(push_direction * push_force)
+			# 直接修改速度，确保球被推开
+			ball.linear_velocity = push_direction * push_force
+			# 同时施加冲量增加效果
+			ball.apply_central_impulse(push_direction * push_force * 0.5)
 
 func _show_clearance_complete():
 	$HUD/MessageLabel.text = SettingsManager.get_text("cleared")
@@ -322,7 +380,8 @@ func increase_difficulty():
 		if SkillManager.has_skill("regen"):
 			if SkillManager.has_skill("shield"):
 				SkillManager.active_skills["shield"] = SkillManager.get_skill_stack("shield") + 1
-			$Player.set_shield(SkillManager.get_shield_count())
+			if game_content.has_node("Player"):
+				game_content.get_node("Player").set_shield(SkillManager.get_shield_count())
 
 	update_spawn_interval()
 
@@ -391,7 +450,10 @@ func spawn_ball():
 
 	ball.position = spawn_pos
 
-	var player_pos = $Player.position
+	var player_pos = Vector2(400, 300)
+	if game_content.has_node("Player"):
+		player_pos = game_content.get_node("Player").position
+
 	var direction = (player_pos - spawn_pos).normalized()
 
 	var speed_multiplier = 1.0 + (difficulty_level * 0.03)
@@ -408,7 +470,8 @@ func spawn_ball():
 	ball.max_contacts_reported = 1
 	ball.body_entered.connect(_on_ball_body_entered)
 	ball.add_to_group("balls")
-	ball.player_reference = $Player
+	if game_content.has_node("Player"):
+		ball.player_reference = game_content.get_node("Player")
 
 	add_child(ball)
 
@@ -442,7 +505,8 @@ func _on_ball_body_entered(body):
 			if game_running:
 				$HUD/MessageLabel.hide()
 
-			$Player.set_shield(SkillManager.active_skills.get("shield", 0))
+			if game_content.has_node("Player"):
+				game_content.get_node("Player").set_shield(SkillManager.active_skills.get("shield", 0))
 			return
 
 		if SkillManager.has_skill("ghost") and not ghost_revive_used and not awaiting_revive:
@@ -473,13 +537,67 @@ func game_over():
 	if has_node("/root/AudioManager"):
 		AudioManager.play_game_over()
 
-	$HUD/MessageLabel.text = SettingsManager.get_text("game_over") + "\n" + \
-		SettingsManager.get_text("survived_time") + ": %.3f s\n" + \
-		SettingsManager.get_text("max_level") + ": %d\nPress R or Touch" % [score, difficulty_level]
-	$HUD/MessageLabel.show()
+	# 显示游戏结束菜单
+	if pause_menu:
+		pause_menu.show_game_over_menu()
 
 func restart_game():
-	get_tree().reload_current_scene()
+	# 清除屏幕上的所有球
+	var balls = get_tree().get_nodes_in_group("balls")
+	for ball in balls:
+		ball.queue_free()
+
+	# 清除问号块
+	var blocks = get_tree().get_nodes_in_group("question_blocks")
+	for block in blocks:
+		block.queue_free()
+
+	# 完全重置游戏状态
+	game_running = false
+	game_over_state = false
+	game_paused = false
+	score = 0.0
+	difficulty_level = 1
+	time_since_last_difficulty_increase = 0.0
+	skills_dodged_count = 0
+	ghost_revive_used = false
+	bomb_timer = 0.0
+	revive_timer = 0.0
+	awaiting_revive = false
+	question_block_timer = 0.0
+	clearance_bar_timer = 0.0
+	clearance_bar_active = false
+	clearance_bar_warning = false
+	clearance_bar_position = 0.0
+
+	# 清除所有技能
+	SkillManager.clear_all_skills()
+
+	# 重置玩家状态
+	if game_content.has_node("Player"):
+		game_content.get_node("Player").position = Vector2(400, 300)
+		game_content.get_node("Player").scale = Vector2.ONE
+		game_content.get_node("Player").set_shield(0)
+
+	# 重置 UI
+	$HUD/ScoreLabel.text = "Time: 0.000 s"
+	$HUD/DifficultyLabel.text = "Level: 1"
+	$HUD/MessageLabel.hide()
+	$HUD/ClearanceBar.hide()
+
+	# 重置计时器
+	$BallTimer.stop()
+
+	# 隐藏游戏内容
+	_hide_game_content()
+
+	# 隐藏菜单
+	if pause_menu:
+		pause_menu.hide()
+
+	# 显示主菜单
+	if pause_menu:
+		pause_menu.show_main_menu()
 
 func spawn_question_block():
 	if question_block_scene == null:
