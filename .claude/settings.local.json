@@ -13,7 +13,23 @@
       "Bash(sed -i '' '/func _on_open_settings_new\\(\\):/a\\\\t# 打开设置菜单\\\\tvar settings_menu = load\\(\"\"res://settings_menu.tscn\"\"\\).instantiate\\(\\)\\\\tadd_child\\(settings_menu\\)\\\\tsettings_menu.back_to_game.connect\\(func\\(\\):\\\\t\\\\tsettings_menu.queue_free\\(\\)\\\\t\\)' /Users/hzh/Documents/demo/godot-demo/game/main.gd)",
       "Bash(ls -la game/*.tscn game/*.gd)",
       "Bash(git add game/main.gd game/main.tscn game/pause_menu.gd game/pause_menu.tscn)",
-      "Bash(git commit -m \"fix: 修复重新开始功能并添加主菜单动态渐变背景:*)"
+      "Bash(git commit -m \"fix: 修复重新开始功能并添加主菜单动态渐变背景:*)",
+      "Bash(where godot)",
+      "Bash(godot.exe --path game --headless --version)",
+      "Bash(dir \"C:/Users/Administrator/AppData/Local/UniGetUI/Chocolatey/lib/godot/tools/\")",
+      "Bash(dir \"C:/Users/Administrator/AppData/Local/UniGetUI/Chocolatey/bin/\")",
+      "Bash(./build_fixed.sh Web)",
+      "Read(//c/Users/Administrator/AppData/Local/UniGetUI/Chocolatey/bin/**)",
+      "Bash(godot.exe --help)",
+      "Bash(dir \"C:/Users/Administrator/AppData/Local/UniGetUI/Chocolatey/lib/godot/\" /s)",
+      "Bash(findstr \"godot\")",
+      "Bash(dir \"C:/Program Files/\")",
+      "Bash(findstr /i godot)",
+      "Bash(where /r \"C:\\\\Program Files\" Godot.exe)",
+      "Bash(mv build.sh build.sh.backup)",
+      "Bash(mv build_fixed2.sh build.sh)",
+      "Bash(ls -la *.md)",
+      "Bash(ls -1 *.md)"
     ]
   }
 }
