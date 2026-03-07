@@ -70,7 +70,14 @@ var translations = {
 
 func _ready():
     _load_settings()
-    _apply_audio_buses()
+    # 延迟应用音频总线，等待音频服务器就绪
+    call_deferred("_apply_audio_buses_safe")
+
+func _apply_audio_buses_safe():
+    """应用音频总线音量（安全版本）"""
+    if AudioServer.bus_count >= 2:
+        AudioServer.set_bus_volume_db(0, linear_to_db(music_volume))
+        AudioServer.set_bus_volume_db(1, linear_to_db(sfx_volume))
 
 func _load_settings():
     """从配置文件加载设置"""
@@ -95,8 +102,9 @@ func _save_settings():
 
 func _apply_audio_buses():
     """应用音频总线音量"""
-    AudioServer.set_bus_volume_db(0, linear_to_db(music_volume))
-    AudioServer.set_bus_volume_db(1, linear_to_db(sfx_volume))
+    if AudioServer.bus_count >= 2:
+        AudioServer.set_bus_volume_db(0, linear_to_db(music_volume))
+        AudioServer.set_bus_volume_db(1, linear_to_db(sfx_volume))
 
 func get_text(key: String) -> String:
     """获取翻译文本"""

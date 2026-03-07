@@ -1,6 +1,6 @@
 extends Node
 
-## 音频管理器 (Autoload Singleton)
+## 音频管理器 (Autoload Singleton) - MVP 版本
 ## 负责播放游戏音乐和音效
 
 @export var music_volume: float = 0.5
@@ -15,13 +15,6 @@ var current_music: AudioStreamPlayer = null
 func _ready():
     # 预加载音效
     _preload_sfx()
-
-    # 连接设置信号
-    if has_node("/root/SettingsManager"):
-        SettingsManager.music_volume_changed.connect(_on_music_volume_changed)
-        SettingsManager.sfx_volume_changed.connect(_on_sfx_volume_changed)
-        music_volume = SettingsManager.music_volume
-        sfx_volume = SettingsManager.sfx_volume
 
 func _preload_sfx():
     """预加载常用音效"""
@@ -43,7 +36,6 @@ func _preload_sfx():
 
 func play_music(music_path: String, loop: bool = true):
     """播放背景音乐"""
-    # 停止当前音乐
     if current_music:
         current_music.stop()
         current_music.queue_free()
@@ -75,7 +67,6 @@ func play_sfx(sfx_name: String, volume_scale: float = 1.0):
     """播放音效"""
     var sfx_path = "res://audio/sfx/" + sfx_name + ".wav"
 
-    # 尝试从缓存加载
     var stream: AudioStream
     if sfx_cache.has(sfx_path):
         stream = sfx_cache[sfx_path]
@@ -83,7 +74,6 @@ func play_sfx(sfx_name: String, volume_scale: float = 1.0):
         stream = load(sfx_path)
         sfx_cache[sfx_path] = stream
     else:
-        # 尝试 mp3 格式
         sfx_path = sfx_path.replace(".wav", ".mp3")
         if ResourceLoader.exists(sfx_path):
             stream = load(sfx_path)
@@ -100,20 +90,9 @@ func play_sfx(sfx_name: String, volume_scale: float = 1.0):
     add_child(player)
     player.play()
 
-    # 播放完成后自动销毁
     player.finished.connect(func():
         player.queue_free()
     )
-
-func _on_music_volume_changed(volume: float):
-    """处理音乐音量变化"""
-    music_volume = volume
-    if current_music:
-        current_music.volume_db = linear_to_db(volume)
-
-func _on_sfx_volume_changed(volume: float):
-    """处理音效音量变化"""
-    sfx_volume = volume
 
 # 便捷方法
 func play_level_up():

@@ -36,14 +36,22 @@ var color_transition = 0.0
 var is_paused = false
 
 func _ready():
-	# 连接按钮信号
+	# 连接按钮信号（使用 CONNECT_DEFERRED 避免重复连接）
 	if start_button:
-		start_button.pressed.connect(_on_start_pressed)
+		if not start_button.pressed.is_connected(_on_start_pressed):
+			start_button.pressed.connect(_on_start_pressed)
 	if resume_button:
-		resume_button.pressed.connect(_on_resume_pressed)
-	restart_button.pressed.connect(_on_restart_pressed)
-	settings_button.pressed.connect(_on_settings_pressed)
-	quit_button.pressed.connect(_on_quit_pressed)
+		if not resume_button.pressed.is_connected(_on_resume_pressed):
+			resume_button.pressed.connect(_on_resume_pressed)
+	if restart_button:
+		if not restart_button.pressed.is_connected(_on_restart_pressed):
+			restart_button.pressed.connect(_on_restart_pressed)
+	if settings_button:
+		if not settings_button.pressed.is_connected(_on_settings_pressed):
+			settings_button.pressed.connect(_on_settings_pressed)
+	if quit_button:
+		if not quit_button.pressed.is_connected(_on_quit_pressed):
+			quit_button.pressed.connect(_on_quit_pressed)
 
 	# 初始显示主菜单
 	show_main_menu()
@@ -185,23 +193,28 @@ func resume():
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 
 func _on_start_pressed():
+	
 	hide()
 	start_game.emit()
 
 func _on_resume_pressed():
+	
 	resume()
 	resume_game.emit()
 
 func _on_restart_pressed():
+	
 	resume()
 	restart_game.emit()
 
 func _on_settings_pressed():
+	
 	# 隐藏当前菜单背景
 	hide()
 	open_settings.emit()
 
 func _on_quit_pressed():
+	
 	quit_game.emit()
 
 func _update_texts():

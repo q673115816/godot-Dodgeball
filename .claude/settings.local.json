@@ -30,6 +30,14 @@
       "Bash(mv build_fixed2.sh build.sh)",
       "Bash(ls -la *.md)",
       "Bash(ls -1 *.md)"
+      "Bash(git commit -m \"fix: 修复重新开始功能并添加主菜单动态渐变背景:*)",
+      "Bash(mkdir -p /Users/hzh/Documents/demo/godot-demo/game/audio/sfx)",
+      "Bash(mkdir -p /Users/hzh/Documents/demo/godot-demo/audio/sfx)",
+      "Bash(godot --headless --script sfx_generator.gd)",
+      "Bash(python3 generate_sfx.py)",
+      "Bash(python3 generate_music.py)",
+      "Bash(godot --headless --check-only)",
+      "Bash(godot --headless --editor --quit)"
     ]
   }
 }

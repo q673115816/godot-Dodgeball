@@ -1,0 +1,18 @@
+[gd_resource type="AudioBusLayout" load_steps=2 format=3]
+
+[sub_resource type="AudioBus" id="AudioBus_0"]
+name = "Music"
+volume_db = 0.0
+mute = false
+solo = false
+send_silent = false
+
+[sub_resource type="AudioBus" id="AudioBus_1"]
+name = "SFX"
+volume_db = 0.0
+mute = false
+solo = false
+send_silent = false
+
+[resource]
+bus = [SubResource("AudioBus_0"), SubResource("AudioBus_1")]
